@@ -1,76 +1,11 @@
-import { Document, Page, pdf, View, Text } from "@react-pdf/renderer";
-import { generateQR } from "../utils/generateQR";
-import { useState, useEffect, useRef } from "react";
-import { addTrimMarksToPDF } from "../utils/TrimMarksPDFLib";
-import TokenTemplate from "../utils/TokenTemplate";
+import { useEffect, useMemo, useState } from "react";
+import { Document, Page, View, pdf } from "@react-pdf/renderer";
 import { useLayout } from "../context/LayoutProvider";
-import mergePDFBuffers from "../utils/mergePDFBuffers";
-import ProgressBar from "../utils/ProgressBar";
-import { useRefresh } from "../context/RefreshContext";
-import Toast from "../utils/Toast";
-import { parseJobMetaFromFileName } from "../utils/parseJobMetaFromFileName";
+import { computeAutoMargins } from "../utils/computeAutoMargins";
+import TokenTemplate from "../utils/TokenTemplate";
+import { addTrimMarksToPDF } from "../utils/TrimMarksPDFLib";
 
-
-import { AnimatePresence, motion } from "framer-motion";
-
-// COUPON GAPS (print units: points)
-
-function computeAutoMargins(layout) {
-  const {
-    paperWidthPt,
-    paperHeightPt,
-    couponWidthPt,
-    couponHeightPt,
-  } = layout.values;
-
-  if (!paperWidthPt || !paperHeightPt || !couponWidthPt || !couponHeightPt)
-    return;
-
-  const { gapXPt, gapYPt } = layout.values;
-
-  const cols = Math.floor(
-    (paperWidthPt + gapXPt) / (couponWidthPt + gapXPt)
-  );
-
-  const rows = Math.floor(
-    (paperHeightPt + gapYPt) / (couponHeightPt + gapYPt)
-  );
-
-  const usedW =
-    cols * couponWidthPt + Math.max(0, cols - 1) * gapXPt;
-
-  const usedH =
-    rows * couponHeightPt + Math.max(0, rows - 1) * gapYPt;
-
-
-  let marginX = Math.max(0, (paperWidthPt - usedW) / 2);
-  let marginY = Math.max(0, (paperHeightPt - usedH) / 2);
-
-  marginX -= paperWidthPt * 0.00008;
-  marginY -= paperHeightPt * 0.00008;
-
-  if (!layout.values.userMarginOverride) {
-    layout.set.setLeftMargin(marginX);
-    layout.set.setRightMargin(marginX);
-    layout.set.setTopMargin(marginY);
-    layout.set.setBottomMargin(marginY);
-  }
-}
-
-const PDFDoc = ({
-  coupons,
-  qrList,
-  layout,
-  pageOffset,
-  totalSheets,
-  totalLabels,
-  code,
-  lot,
-  job,
-}) => {
-
-  const { values } = layout;
-
+const buildGrid = (values) => {
   const {
     paperWidthPt,
     paperHeightPt,
@@ -80,370 +15,254 @@ const PDFDoc = ({
     rightMargin,
     topMargin,
     bottomMargin,
-    fontScale,
     gapXPt,
     gapYPt,
   } = values;
 
-  const usableW = paperWidthPt - leftMargin - rightMargin;
-  const usableH = paperHeightPt - topMargin - bottomMargin;
+  const hasSizes =
+    paperWidthPt > 0 &&
+    paperHeightPt > 0 &&
+    couponWidthPt > 0 &&
+    couponHeightPt > 0;
 
-  const columns = Math.max(
-    1,
-    Math.floor((usableW + gapXPt) / (couponWidthPt + gapXPt))
-  );
-
-  const rows = Math.max(
-    1,
-    Math.floor((usableH + gapYPt) / (couponHeightPt + gapYPt))
-  );
-
-  const perPage = columns * rows;
-
-  const pages = [];
-  for (let i = 0; i < coupons.length; i += perPage) {
-    pages.push(coupons.slice(i, i + perPage));
+  if (!hasSizes) {
+    return {
+      ready: false,
+      message: "Set both page and label sizes to continue.",
+      columns: 0,
+      rows: 0,
+      count: 0,
+      gapX: 0,
+      gapY: 0,
+    };
   }
 
-  return (
-    <Document>
-      {pages.map((pageCoupons, pIndex) => (
-        <Page
-          key={pIndex}
-          size={{ width: paperWidthPt, height: paperHeightPt }}
-          style={{ position: "relative" }}
-        >
-          <View
-            style={{
-              position: "absolute",
-
-              // container = full top margin band
-              top: 0,
-              height: topMargin,
-
-              // anchored to paper edge
-              right: rightMargin,
-
-              width: paperWidthPt,
-
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "flex-end",
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 18,
-                color: "#000",
-                textAlign: "right",
-                fontWeight: 700,
-                paddingBottom: 4,
-              }}
-            >
-              Lot: {lot} | {code} | Qty: {totalLabels} | SKU No: {job} | Sheet {pageOffset + pIndex + 1}/{totalSheets}
-            </Text>
-          </View>
-          <View
-            style={{
-              position: "absolute",
-
-              // container = full top margin band
-              bottom: 0,
-              height: bottomMargin,
-
-              // anchored to paper edge
-              left: leftMargin,
-
-              width: paperWidthPt,
-
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "flex-start",
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 18,
-                color: "#000",
-                textAlign: "left",
-                fontWeight: 700,
-                paddingTop: 4,
-              }}
-            >
-              Lot: {lot} | {code} | Qty: {totalLabels} | SKU No: {job} | Sheet {pageOffset + pIndex + 1}/{totalSheets}
-            </Text>
-          </View>
-
-          {pageCoupons.map((coupon, i) => {
-            const globalIndex = pIndex * perPage + i;
-            const row = Math.floor(i / columns);
-            const col = i % columns;
-
-            const x = leftMargin + col * (couponWidthPt + gapXPt);
-            const y = topMargin + row * (couponHeightPt + gapYPt);
-
-            const qrObj = qrList[globalIndex] || {};
-
-            return (
-              <View
-                key={i}
-                style={{
-                  position: "absolute",
-                  left: x,
-                  top: y,
-                  width: couponWidthPt,
-                  height: couponHeightPt,
-                }}
-              >
-
-                <TokenTemplate
-                  coupon={coupon}
-                  qrCode={qrObj.mainQr}
-                  internalQr={qrObj.internalQr}
-                  couponWidthPt={couponWidthPt}
-                  couponHeightPt={couponHeightPt}
-                  fontSize={5 * fontScale}
-                />
-              </View>
-            );
-          })}
-        </Page>
-      ))}
-    </Document>
-  );
-};
-
-const split = (arr, size) => {
-  const out = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
-};
-
-const calculatePerPage = (layout) => {
-  const {
-    paperWidthPt,
-    paperHeightPt,
-    couponWidthPt,
-    couponHeightPt,
-    leftMargin,
-    rightMargin,
-    topMargin,
-    bottomMargin,
-    gapXPt,
-    gapYPt,
-  } = layout.values;
+  const gapX = gapXPt || 0;
+  const gapY = gapYPt || 0;
 
   const usableW = paperWidthPt - leftMargin - rightMargin;
   const usableH = paperHeightPt - topMargin - bottomMargin;
 
-  const cols = Math.floor(
-    (usableW + gapXPt) / (couponWidthPt + gapXPt)
+  if (usableW <= 0 || usableH <= 0) {
+    return {
+      ready: false,
+      message: "Margins are larger than the page area.",
+      columns: 0,
+      rows: 0,
+      count: 0,
+      gapX,
+      gapY,
+    };
+  }
+
+  const columns = Math.max(
+    0,
+    Math.floor((usableW + gapX) / (couponWidthPt + gapX))
+  );
+  const rows = Math.max(
+    0,
+    Math.floor((usableH + gapY) / (couponHeightPt + gapY))
   );
 
-  const rows = Math.floor(
-    (usableH + gapYPt) / (couponHeightPt + gapYPt)
-  );
+  const count = columns * rows;
 
-  return cols * rows;
+  if (!columns || !rows) {
+    return {
+      ready: false,
+      message: "Label size is too large to fit on the page.",
+      columns,
+      rows,
+      count,
+      gapX,
+      gapY,
+    };
+  }
+
+  return {
+    ready: true,
+    message: "",
+    columns,
+    rows,
+    count,
+    gapX,
+    gapY,
+  };
 };
 
-export default function GeneratePDF({ coupons, jobMeta, error }) {
-  const { resetSignal } = useRefresh();
-
-  const qrListRef = useRef([]);
-  // [{ mainQr, internalQr }]
-  const [pdfBlob, setPdfBlob] = useState(null);
-
-  const [isReady, setIsReady] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [progress, setProgress] = useState(0);
-
-  const [phase, setPhase] = useState("qr");
-
-  const [showToast, setShowToast] = useState(false);
-  const [toastMsg, setToastMsg] = useState("");
-
+export default function GeneratePDF({ resetSignal }) {
   const layout = useLayout();
+  const { values } = layout;
+
+  const [pdfBlob, setPdfBlob] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [statusMsg, setStatusMsg] = useState("");
+  const [error, setError] = useState("");
+
+  const grid = useMemo(() => buildGrid(values), [values]);
 
   useEffect(() => {
-    setProgress(0);
-    setPhase("qr");
-    setPdfBlob(null);
-    qrListRef.current = []; // reset
-    setIsReady(false);
-    setIsGenerating(false);
-  }, [resetSignal]);
-
-  useEffect(() => {
-    computeAutoMargins(layout);
+    if (!values.userMarginOverride) {
+      computeAutoMargins(layout);
+    }
   }, [
-    layout.values.paperWidthPt,
-    layout.values.paperHeightPt,
-    layout.values.couponWidthPt,
-    layout.values.couponHeightPt,
-    layout.values.gapXPt,
-    layout.values.gapYPt,
-    layout.values.userMarginOverride,
+    layout,
+    values.userMarginOverride,
+    values.paperWidthPt,
+    values.paperHeightPt,
+    values.couponWidthPt,
+    values.couponHeightPt,
+    values.gapXPt,
+    values.gapYPt,
   ]);
 
-  // QR GENERATION (optimized)
   useEffect(() => {
-    const run = async () => {
-      if (!coupons.length) return;
+    setPdfBlob(null);
+    setStatusMsg("");
+    setError("");
+  }, [
+    resetSignal,
+    values.paperWidthPt,
+    values.paperHeightPt,
+    values.couponWidthPt,
+    values.couponHeightPt,
+    values.gapXPt,
+    values.gapYPt,
+    values.leftMargin,
+    values.rightMargin,
+    values.topMargin,
+    values.bottomMargin,
+  ]);
 
-      setProgress(0);
-      setPhase("qr");
+  const labelNumbers = useMemo(
+    () => Array.from({ length: grid.count }, (_, idx) => idx + 1),
+    [grid.count]
+  );
 
-      const batches = split(coupons, 100);
-      const temp = [];
-
-      for (let b of batches) {
-        for (let coupon of b) {
-          const qrValue =
-            coupon.qrCode !== undefined
-              ? coupon.qrCode
-              : coupon["Code URL"];
-
-          const mainQr =
-            qrValue !== undefined && qrValue !== null && qrValue !== ""
-              ? await generateQR(qrValue.toString())
-              : null;
-
-
-          const internalQr = coupon["Internal Code"]
-            ? await generateQR(coupon["Internal Code"].toString())
-            : null;
-
-          temp.push({ mainQr, internalQr });
-
-          setProgress(Math.round((temp.length / coupons.length) * 50));
-          await new Promise((r) => setTimeout(r, 0));
-        }
-      }
-
-      qrListRef.current = temp; // no rerenders
-      setProgress(50);
-      setIsReady(true);
-    };
-
-    run();
-  }, [coupons]);
-
-  // PAGE GENERATION + MERGING
-  useEffect(() => {
-    const run = async () => {
-      if (!isReady || qrListRef.current.length !== coupons.length) return;
-
-      setIsGenerating(true);
-      setPhase("pdf");
-
-      const perPage = calculatePerPage(layout);
-      const couponPages = split(coupons, perPage);
-      const totalSheets = Math.ceil(coupons.length / perPage);
-      const qrPages = split(qrListRef.current, perPage);
-
-      const buffers = [];
-
-      let globalPageOffset = 0;
-
-      for (let i = 0; i < couponPages.length; i++) {
-
-        setProgress(50 + Math.round(((i + 1) / couponPages.length) * 40));
-
-        const blob = await pdf(
-          <PDFDoc
-            coupons={couponPages[i]}
-            qrList={qrPages[i]}
-            layout={layout}
-            pageOffset={globalPageOffset}
-            totalSheets={totalSheets}
-            totalLabels={coupons.length}
-            code={jobMeta.code}
-            lot={jobMeta.lot}
-            job={jobMeta.job}
-          />
-
-        ).toBlob();
-
-        const raw = await blob.arrayBuffer();
-        buffers.push(raw);
-        globalPageOffset += Math.ceil(couponPages[i].length / perPage);
-
-      }
-
-      setPhase("merge");
-      setProgress(95);
-
-      const merged = await mergePDFBuffers(buffers);
-
-      const trimmedPdf = await addTrimMarksToPDF(
-        merged,
-        layout.values
-      );
-
-      setPdfBlob(new Blob([trimmedPdf], { type: "application/pdf" }));
-
-      setProgress(100);
-      setIsGenerating(false);
-
-      setToastMsg("PDF Generated!");
-      setShowToast(true);
-    };
-
-    run();
-  }, [isReady, coupons, layout.values]);
-
-  if (!coupons.length || error) return null;
-
-  const getOutputFileName = () => {
-    const code = jobMeta?.code || "OUTPUT";
-    const count = coupons.length;
-
-    const lot = jobMeta?.lot ? `Lot ${jobMeta.lot}` : null;
-    const job = jobMeta?.job ? `Job ${jobMeta.job}` : null;
-
-    const extra =
-      lot || job
-        ? ` ( ${[lot, job].filter(Boolean).join(", ")} )`
-        : "";
-
-    return `${code} (${count})${extra}.pdf`;
+  const handleDownload = () => {
+    if (!pdfBlob) return;
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `layout-${grid.count}-labels.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
+  const handleGenerate = async () => {
+    if (!grid.ready) {
+      setError(grid.message || "Please set sizes before generating.");
+      return;
+    }
+
+    setIsGenerating(true);
+    setError("");
+    setStatusMsg("");
+
+    try {
+      const doc = (
+        <Document>
+          <Page
+            size={{ width: values.paperWidthPt, height: values.paperHeightPt }}
+            style={{ position: "relative" }}
+          >
+            {labelNumbers.map((num, idx) => {
+              const row = Math.floor(idx / grid.columns);
+              const col = idx % grid.columns;
+
+              const x = values.leftMargin + col * (values.couponWidthPt + grid.gapX);
+              const y = values.topMargin + row * (values.couponHeightPt + grid.gapY);
+
+              return (
+                <View
+                  key={num}
+                  style={{
+                    position: "absolute",
+                    left: x,
+                    top: y,
+                    width: values.couponWidthPt,
+                    height: values.couponHeightPt,
+                  }}
+                >
+                  <TokenTemplate
+                    labelNumber={num}
+                    couponWidthPt={values.couponWidthPt}
+                    couponHeightPt={values.couponHeightPt}
+                  />
+                </View>
+              );
+            })}
+          </Page>
+        </Document>
+      );
+
+      const blob = await pdf(doc).toBlob();
+      const rawBytes = await blob.arrayBuffer();
+
+      const trimmed = await addTrimMarksToPDF(rawBytes, {
+        ...values,
+        gapXPt: values.gapXPt || 0,
+        gapYPt: values.gapYPt || 0,
+      });
+
+      setPdfBlob(new Blob([trimmed], { type: "application/pdf" }));
+      setStatusMsg(`Generated ${grid.count} labels on a single page.`);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to generate the PDF. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const detailLine = grid.ready
+    ? `${grid.columns} columns x ${grid.rows} rows (${grid.count} labels)`
+    : grid.message;
 
   return (
-    <div className="w-full flex flex-col items-center gap-4 bg-nero-800 p-2.5">
-      <AnimatePresence mode="wait">
-        {(phase === "qr" || phase === "pdf" || phase === "merge") && (
-          <ProgressBar progress={progress} phase={phase} />
-        )}
-      </AnimatePresence>
+    <div className="w-full flex flex-col items-center bg-nero-800 p-2.5 gap-3">
+      <div className="w-full flex flex-col gap-1">
+        <div className="flex items-center justify-between text-sm text-nero-300">
+          <span>Labels per page</span>
+          <span className="font-semibold">{grid.count || "-"}</span>
+        </div>
+        <div className="text-xs text-nero-400">{detailLine}</div>
+      </div>
 
-      <AnimatePresence>
-        {pdfBlob && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <button
-              className="w-48 h-8 flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md text-white bg-denim-600 hover:bg-denim-700 active:scale-95 transition-all"
-              onClick={() => {
-                const url = URL.createObjectURL(pdfBlob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = getOutputFileName();
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-            >
-              Download
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="w-full flex gap-2">
+        <button
+          onClick={handleGenerate}
+          disabled={isGenerating || !grid.ready}
+          className={`flex-1 h-10 px-3 rounded-md text-sm font-medium transition-all ${isGenerating || !grid.ready
+            ? "bg-nero-700 text-nero-500 cursor-not-allowed"
+            : "bg-denim-600 text-white hover:bg-denim-700 active:scale-95"
+            }`}
+        >
+          {isGenerating ? "Generating..." : "Generate PDF"}
+        </button>
 
-      <Toast
-        message={toastMsg}
-        show={showToast}
-        onClose={() => setShowToast(false)}
-      />
+        <button
+          onClick={handleDownload}
+          disabled={!pdfBlob}
+          className={`w-32 h-10 px-3 rounded-md text-sm font-medium transition-all ${pdfBlob
+            ? "bg-nero-700 text-white hover:bg-nero-600 active:scale-95"
+            : "bg-nero-700 text-nero-500 cursor-not-allowed"
+            }`}
+        >
+          Download
+        </button>
+      </div>
+
+      {statusMsg && (
+        <div className="w-full text-xs text-green-200 bg-nero-750 border border-nero-600 rounded-md px-3 py-2">
+          {statusMsg}
+        </div>
+      )}
+
+      {error && (
+        <div className="w-full text-xs text-red-200 bg-nero-750 border border-red-300 rounded-md px-3 py-2">
+          {error}
+        </div>
+      )}
     </div>
   );
 }

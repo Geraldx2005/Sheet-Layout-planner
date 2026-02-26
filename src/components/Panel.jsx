@@ -2,12 +2,10 @@ import { useRefresh } from "../context/RefreshContext";
 import SizeConfigPanel from "./panel/sizes/SizeConfigPanel";
 import MarginConfigPanel from "./panel/margin/MarginConfigPanel";
 import Orientation from "./ui/Orientation";
-import UploadExcel from "./UploadExcel";
+import GeneratePDF from "./GeneratePDF";
 
 const Panel = () => {
-  const { coupons, setCoupons, resetSignal } = useRefresh();
-
-  const hasCoupons = coupons.length > 0;
+  const { resetSignal } = useRefresh();
 
   return (
     <>
@@ -22,13 +20,7 @@ const Panel = () => {
           <SizeConfigPanel />
           <MarginConfigPanel />
           <Orientation />
-          <UploadExcel
-            setCoupons={setCoupons}
-            resetSignal={resetSignal}
-            hasCoupons={hasCoupons}
-            couponsLength={coupons.length}
-            coupons={coupons}
-          />
+          <GeneratePDF resetSignal={resetSignal} />
         </div>
       </div>
     </>

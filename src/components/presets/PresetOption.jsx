@@ -21,7 +21,7 @@ const PresetOption = ({ paperName, width, height, selected, onSelect }) => {
     layout.set.setPaperWidthPt(mmToPt(width));
     layout.set.setPaperHeightPt(mmToPt(height));
 
-    // full reset: clear coupons + resetSignal + reset upload UI
+    // full reset: trigger downstream state to refresh derived layouts
     handleRefresh();
 
     // ALSO reset coupon size UI values (if needed)
