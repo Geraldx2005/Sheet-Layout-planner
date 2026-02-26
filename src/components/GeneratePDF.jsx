@@ -4,6 +4,7 @@ import { useLayout } from "../context/LayoutProvider";
 import { computeAutoMargins } from "../utils/computeAutoMargins";
 import TokenTemplate from "../utils/TokenTemplate";
 import { addTrimMarksToPDF } from "../utils/TrimMarksPDFLib";
+import Toast from "../utils/Toast";
 
 const buildGrid = (values) => {
   const {
@@ -97,6 +98,7 @@ export default function GeneratePDF({ resetSignal }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
   const [error, setError] = useState("");
+  const [showToast, setShowToast] = useState(false);
 
   const grid = useMemo(() => buildGrid(values), [values]);
 
@@ -142,8 +144,21 @@ export default function GeneratePDF({ resetSignal }) {
     if (!pdfBlob) return;
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement("a");
+
+    // Format the number to max 2 decimal places, removing trailing zeros
+    const formatDim = (pt, unit) => {
+      const val = unit === "mm" ? pt / 2.8346456693 : pt / 72;
+      return parseFloat(val.toFixed(2));
+    };
+
+    const pW = formatDim(values.paperWidthPt, values.paperUnit);
+    const pH = formatDim(values.paperHeightPt, values.paperUnit);
+    const cW = formatDim(values.couponWidthPt, values.couponUnit);
+    const cH = formatDim(values.couponHeightPt, values.couponUnit);
+
     a.href = url;
-    a.download = `layout-${grid.count}-labels.pdf`;
+    a.download = `Sheet size - ${pW} x ${pH} ${values.paperUnit}, Label size - ${cW} x ${cH} ${values.couponUnit}.pdf`;
+
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -205,6 +220,7 @@ export default function GeneratePDF({ resetSignal }) {
       });
 
       setPdfBlob(new Blob([trimmed], { type: "application/pdf" }));
+      setShowToast(true);
       setStatusMsg(`Generated ${grid.count} labels on a single page.`);
     } catch (err) {
       console.error(err);
@@ -244,7 +260,7 @@ export default function GeneratePDF({ resetSignal }) {
           onClick={handleDownload}
           disabled={!pdfBlob}
           className={`w-32 h-10 px-3 rounded-md text-sm font-medium transition-all ${pdfBlob
-            ? "bg-nero-700 text-white hover:bg-nero-600 active:scale-95"
+            ? "bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95"
             : "bg-nero-700 text-nero-500 cursor-not-allowed"
             }`}
         >
@@ -263,6 +279,12 @@ export default function GeneratePDF({ resetSignal }) {
           {error}
         </div>
       )}
+
+      <Toast
+        message="PDF Generated Successfully!"
+        show={showToast}
+        onClose={() => setShowToast(false)}
+      />
     </div>
   );
 }

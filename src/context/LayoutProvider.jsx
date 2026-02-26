@@ -5,7 +5,7 @@ const LayoutContext = createContext();
 
 export const LayoutProvider = ({ children }) => {
   // Units
-  const [paperUnit, setPaperUnit] = useState("mm");
+  const [paperUnit, setPaperUnit] = useState("in");
   const [couponUnit, setCouponUnit] = useState("mm");
 
   // Papers

@@ -30,7 +30,7 @@ const PresetHolder = () => {
   );
 
   return (
-    <div className="w-full sm:w-[50%] md:w-[60%] lg:w-[67%] xl:w-[72%] h-screen">
+    <div className="hidden sm:block w-full sm:w-[50%] md:w-[60%] lg:w-[67%] xl:w-[72%] h-screen">
       <div className="w-full bg-nero-800 border-b-2 border-r-2 border-nero-900 text-nero-300 text-xl px-4 py-2">
         Presets
       </div>
