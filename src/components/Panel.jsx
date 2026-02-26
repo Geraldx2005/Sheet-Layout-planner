@@ -16,7 +16,7 @@ const Panel = () => {
           Chronos Layout Planner
         </div>
 
-        <div className="minimal-scrollbar overflow-y-auto overflow-x-hidden w-full h-[calc(100vh-44px)] flex flex-col justify-start items-center bg-nero-800 border-t-2 border-nero-900 text-nero-300">
+        <div className="minimal-scrollbar overflow-hidden sm:overflow-y-auto overflow-x-hidden w-full h-[calc(100vh-44px)] flex flex-col justify-start items-center bg-nero-800 border-t-2 border-nero-900 text-nero-300">
           <SizeConfigPanel />
           <MarginConfigPanel />
           <Orientation />
