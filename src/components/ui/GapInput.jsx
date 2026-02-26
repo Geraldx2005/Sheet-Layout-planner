@@ -71,7 +71,7 @@ const GapInput = () => {
                     onBlur={(e) => {
                         if (e.target.value === "") handleGapXChange("0");
                     }}
-                    className="no-spinner w-[40%] h-8 px-2 py-1 bg-nero-700 rounded-md rounded-l-none border border-nero-600 text-sm"
+                    className="no-spinner w-[40%] h-8 px-2 py-1 bg-nero-700 rounded-md rounded-l-none border border-nero-600 text-sm focus:outline-none focus:ring-2 focus:ring-nero-500 z-10"
                 />
             </div>
 
@@ -89,7 +89,7 @@ const GapInput = () => {
                     onBlur={(e) => {
                         if (e.target.value === "") handleGapYChange("0");
                     }}
-                    className="no-spinner w-[40%] h-8 px-2 py-1 bg-nero-700 rounded-md rounded-l-none border border-nero-600 text-sm"
+                    className="no-spinner w-[40%] h-8 px-2 py-1 bg-nero-700 rounded-md rounded-l-none border border-nero-600 text-sm focus:outline-none focus:ring-2 focus:ring-nero-500 z-10"
                 />
             </div>
         </>

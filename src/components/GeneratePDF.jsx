@@ -221,7 +221,7 @@ export default function GeneratePDF({ resetSignal }) {
 
       setPdfBlob(new Blob([trimmed], { type: "application/pdf" }));
       setShowToast(true);
-      setStatusMsg(`Generated ${grid.count} labels on a single page.`);
+      setStatusMsg(`${grid.count} labels on a single page.`);
     } catch (err) {
       console.error(err);
       setError("Failed to generate the PDF. Please try again.");

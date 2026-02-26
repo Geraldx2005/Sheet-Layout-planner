@@ -48,7 +48,7 @@ const MarginInput = ({ label }) => {
             <label className="text-sm text-nero-400 font-medium">{label}</label>
 
             <div className="w-full h-8 flex rounded-md">
-                
+
                 {/* Up/Down Buttons */}
                 <div className="h-8 w-6 bg-nero-750 border border-nero-600 border-r-0 flex flex-col rounded-bl-md rounded-tl-md overflow-hidden">
                     <button
@@ -73,7 +73,7 @@ const MarginInput = ({ label }) => {
                     value={inputValue}
                     onChange={(e) => update(e.target.value)}
                     onFocus={(e) => e.target.select()}
-                    className="no-spinner w-[80%] h-8 px-2 py-1 bg-nero-700 border border-nero-600 rounded-md rounded-bl-none rounded-tl-none text-sm"
+                    className="no-spinner w-[80%] h-8 px-2 py-1 bg-nero-700 border border-nero-600 rounded-md rounded-bl-none rounded-tl-none text-sm focus:outline-none focus:ring-2 focus:ring-nero-500 z-10"
                 />
             </div>
         </div>
