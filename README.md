@@ -1,49 +1,17 @@
-# **Chronos**
-### High-Performance Coupon Generation Engine
+﻿# Chronos
+## Sheet Layout Planner
 
-<div align="center">
-  <img src="https://img.shields.io/badge/Build-Passing-brightgreen?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/React-18-blue?style=for-the-badge&logo=react&logoColor=white" />
-  <img src="https://img.shields.io/badge/PDF%20Renderer-@react--pdf-black?style=for-the-badge&logo=adobe&logoColor=white" />
-  <img src="https://img.shields.io/badge/Framer%20Motion-Animation-purple?style=for-the-badge&logo=framer" />
-</div>
+Chronos is a simple sheet layout planner. You enter the page size, label size, and gap sizes, and the app draws the labels (coupons) inside the sheet.
 
-<br/>
-
-**Chronos** is a production-grade PDF generation engine built to create thousands of printable coupon tokens with embedded QR codes, dynamic layouts, and pixel-perfect typography.  
-Engineered for **speed**, **precision**, and **print-shop reliability**.
-
----
-
-## Features
-
-### 🔹 Smart Coupon Layout Engine
-- Automatically calculates rows, columns, and margins  
-- Compatible with any paper size  
-- Maintains perfect alignment across all pages  
-
-### 🔹 High-Quality QR Code Rendering
-- Fast batch QR generation  
-- Sharp, lossless PDF output  
-
-### 🔹 Print-Perfect PDF Output
-- Trim marks included for cutting accuracy  
-- Montserrat font fully embedded (no system installation needed)  
-
-### 🔹 Real-Time Progress Tracking
-- Multi-phase progress flow: **QR → PDF → Merge → Complete**  
-- Animated UI built with Framer Motion  
-
----
+## What it does
+- Calculates how many labels fit on a sheet based on the provided page, label, and gap sizes
+- Renders the label grid so you can visually confirm spacing and alignment
+- Lets you download a PDF to verify the label count and placement
 
 ## License
-MIT License — free for both commercial and personal use.
+© 2026 Gerald. All rights reserved.
 
----
+This software is for personal use only and may not be copied, modified, or distributed.
 
 ## Author
-Created by **Gerald** — building high-performance, production-ready tools.
-
----
-
-# Chronos — Built for Precision, Speed & Scale.
+Created by Gerald - building practical, production-ready tools.
